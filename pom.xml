@@ -18,6 +18,7 @@
         <jna.version>4.2.1</jna.version>
         <hamcrest.version>2.0.0.0</hamcrest.version>
         <jest.version>2.0.0</jest.version>
+        <guava.version>20.0</guava.version>
         <licenses.version>3.3.0-SNAPSHOT</licenses.version>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
     </properties>
@@ -47,6 +48,13 @@
             <groupId>io.searchbox</groupId>
             <artifactId>jest</artifactId>
             <version>${jest.version}</version>
+        </dependency>
+        <!-- Temporarily override the guava version to match Kafka's so Jest doesn't pull in an old version. This
+             is a short-term hack to work around conflicting versions until we have classpath isolation. -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

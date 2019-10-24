@@ -96,5 +96,5 @@ public interface ElasticsearchClient extends AutoCloseable {
   /**
    * Shuts down the client.
    */
-  void close();
+  void close() throws IOException;
 }

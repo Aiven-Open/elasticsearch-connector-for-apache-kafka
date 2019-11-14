@@ -28,6 +28,7 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -182,7 +183,11 @@ public class ElasticsearchSinkTask extends SinkTask {
       writer.stop();
     }
     if (client != null) {
-      client.close();
+      try {
+        client.close();
+      } catch (IOException e) {
+        throw new ConnectException(e);
+      }
     }
   }
 

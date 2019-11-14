@@ -198,6 +198,8 @@ public class JestElasticsearchClient implements ElasticsearchClient {
       return Version.ES_V5;
     } else if (esVersion.startsWith("6.")) {
       return Version.ES_V6;
+    } else if (esVersion.startsWith("7.")) {
+      return Version.ES_V7;
     }
     return defaultVersion;
   }
@@ -229,7 +231,11 @@ public class JestElasticsearchClient implements ElasticsearchClient {
   public void createIndices(Set<String> indices) {
     for (String index : indices) {
       if (!indexExists(index)) {
-        CreateIndex createIndex = new CreateIndex.Builder(index).build();
+        CreateIndex.Builder builder = new CreateIndex.Builder(index);
+        if (version.equals(Version.ES_V7)) {
+          builder.setParameter("include_type_name", true);
+        }
+        CreateIndex createIndex = builder.build();
         try {
           JestResult result = client.execute(createIndex);
           if (!result.isSucceeded()) {
@@ -285,7 +291,7 @@ public class JestElasticsearchClient implements ElasticsearchClient {
   }
 
   // visible for testing
-  protected BulkableAction toBulkableAction(IndexableRecord record) {
+  protected BulkableAction<?> toBulkableAction(IndexableRecord record) {
     // If payload is null, the record was a tombstone and we should delete from the index.
     return record.payload != null ? toIndexRequest(record) : toDeleteRequest(record);
   }
@@ -364,7 +370,7 @@ public class JestElasticsearchClient implements ElasticsearchClient {
     return result.getJsonObject();
   }
 
-  public void close() {
-    client.shutdownClient();
+  public void close() throws IOException {
+    client.close();
   }
 }

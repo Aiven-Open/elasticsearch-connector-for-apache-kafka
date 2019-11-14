@@ -29,7 +29,7 @@ import java.util.Set;
 public interface ElasticsearchClient extends AutoCloseable {
 
   enum Version {
-    ES_V1, ES_V2, ES_V5, ES_V6
+    ES_V1, ES_V2, ES_V5, ES_V6, ES_V7
   }
 
   /**
@@ -96,5 +96,5 @@ public interface ElasticsearchClient extends AutoCloseable {
   /**
    * Shuts down the client.
    */
-  void close();
+  void close() throws IOException;
 }

@@ -1,25 +1,21 @@
 # Kafka Connect Elasticsearch Connector
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-elasticsearch.svg?type=shield)](https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-elasticsearch?ref=badge_shield)
 
+[![Build Status](https://travis-ci.org/aiven/aiven-kafka-connect-elasticsearch.svg?branch=master)](https://travis-ci.org/aiven/aiven-kafka-connect-elasticsearch)
 
-kafka-connect-elasticsearch is a [Kafka Connector](http://kafka.apache.org/documentation.html#connect)
-for copying data between Kafka and Elasticsearch.
+This repository includes a sink [Kafka Connect](http://kafka.apache.org/documentation.html#connect) connectors for Elasticsearch.
 
-# Development
+The project originates from Confluent [kafka-connect-elasticsearch](https://github.com/confluentinc/kafka-connect-elasticsearch). The code was forked before the change of the project's license. We want to thank the Confluent team for their efforts in developing the connector and aim to continue keeping this fork well-maintained and truly open.
 
-To build a development version you'll need a recent version of Kafka as well as a set of upstream Confluent projects, which you'll have to build from their appropriate snapshot branch. See the [FAQ](https://github.com/confluentinc/kafka-connect-elasticsearch/wiki/FAQ) for guidance on this process.
+# Documentation
 
-You can build kafka-connect-elasticsearch with Maven using the standard lifecycle phases.
+TBD
 
 # Contribute
 
-- Source Code: https://github.com/confluentinc/kafka-connect-elasticsearch
-- Issue Tracker: https://github.com/confluentinc/kafka-connect-elasticsearch/issues
+[Source Code](https://github.com/aiven/aiven-kafka-connect-elasticsearch)
 
+[Issue Tracker](https://github.com/aiven/aiven-kafka-connect-elasticsearch/issues)
 
 # License
 
-The project is licensed under the Apache 2 license.
-
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-elasticsearch.svg?type=large)](https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-elasticsearch?ref=badge_large)
+The project is licensed under the [Apache 2 license](https://www.apache.org/licenses/LICENSE-2.0). See [LICENSE](LICENSE).

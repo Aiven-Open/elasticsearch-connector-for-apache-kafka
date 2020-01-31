@@ -70,7 +70,7 @@
 
         <maven-surefire-and-failsafe-plugin.version>2.21.0</maven-surefire-and-failsafe-plugin.version>
 
-        <checkstyle.version>8.18</checkstyle.version>
+        <checkstyle.version>8.29</checkstyle.version>
     </properties>
 
     <dependencies>

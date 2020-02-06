@@ -164,7 +164,7 @@
                 <version>3.0.0</version>
                 <configuration>
                     <descriptors>
-<!--                        <descriptor>src/assembly/development.xml</descriptor>-->
+                        <!--                        <descriptor>src/assembly/development.xml</descriptor>-->
                         <descriptor>src/assembly/package.xml</descriptor>
                     </descriptors>
                 </configuration>
@@ -183,7 +183,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-and-failsafe-plugin.version}</version>
                 <configuration>
-                    <argLine>@{argLine} -Djava.awt.headless=true -Dtests.security.manager=false -Dtests.jarhell.check=false</argLine>
+                    <argLine>@{argLine} -Djava.awt.headless=true -Dtests.security.manager=false
+                        -Dtests.jarhell.check=false
+                    </argLine>
                 </configuration>
                 <executions>
                     <execution>
@@ -194,38 +196,38 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.17</version>
-                <configuration>
-                    <configLocation>checkstyle/checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>
-                    <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
-                    <encoding>UTF-8</encoding>
-                    <consoleOutput>true</consoleOutput>
-                    <failsOnError>false</failsOnError>
-                    <failOnViolation>true</failOnViolation>
-                    <includeResources>false</includeResources>
-                    <includeTestResources>false</includeTestResources>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>${checkstyle.version}</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <id>validate</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-checkstyle-plugin</artifactId>-->
+<!--                <version>2.17</version>-->
+<!--                <configuration>-->
+<!--                    <configLocation>checkstyle/checkstyle.xml</configLocation>-->
+<!--                    <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>-->
+<!--                    <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>-->
+<!--                    <encoding>UTF-8</encoding>-->
+<!--                    <consoleOutput>true</consoleOutput>-->
+<!--                    <failsOnError>false</failsOnError>-->
+<!--                    <failOnViolation>true</failOnViolation>-->
+<!--                    <includeResources>false</includeResources>-->
+<!--                    <includeTestResources>false</includeTestResources>-->
+<!--                </configuration>-->
+<!--                <dependencies>-->
+<!--                    <dependency>-->
+<!--                        <groupId>com.puppycrawl.tools</groupId>-->
+<!--                        <artifactId>checkstyle</artifactId>-->
+<!--                        <version>${checkstyle.version}</version>-->
+<!--                    </dependency>-->
+<!--                </dependencies>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>validate</id>-->
+<!--                        <phase>validate</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>check</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
 
         <resources>

@@ -9,7 +9,7 @@
     <!-- switch statements on types exceed maximum complexity -->
     <suppress
             checks="(CyclomaticComplexity)"
-            files="(JestElasticsearchClient|Mapping).java"
+            files="(JestElasticsearchClient|Mapping|JestElasticsearchClient).java"
     />
 
     <!-- TODO: Undecided if this is too much -->
@@ -22,6 +22,10 @@
     <suppress
             checks="(ParameterNumber)"
             files="(ElasticsearchWriter).java"
+    />
+
+    <suppress
+        checks="(ClassFanOutComplexity)" files="(JestElasticsearchClient|JestElasticsearchClientTest).java"
     />
 
 </suppressions>

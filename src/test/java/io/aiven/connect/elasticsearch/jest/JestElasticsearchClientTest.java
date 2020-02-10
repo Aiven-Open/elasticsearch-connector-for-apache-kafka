@@ -77,7 +77,6 @@ import static org.mockito.Mockito.when;
 public class JestElasticsearchClientTest {
 
     private static final String INDEX = "index";
-    private static final String BAD_INDEX = "bad_bad_index";
     private static final String KEY = "key";
     private static final String TYPE = "type";
     private static final String QUERY = "query";

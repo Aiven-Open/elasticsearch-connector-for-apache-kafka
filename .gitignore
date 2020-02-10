@@ -3,3 +3,6 @@ docs/_build
 .idea
 *.iml
 *.DS_Store
+.gradle
+.gradletasknamecache
+build/

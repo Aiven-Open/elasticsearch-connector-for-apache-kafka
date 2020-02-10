@@ -179,7 +179,7 @@ public class BulkProcessorTest {
         bulkProcessor.flush(flushTimeoutMs);
     }
 
-    @Test
+    @Test(expected = ConnectException.class)
     public void addBlocksWhenBufferFull() {
         final int maxBufferedRecords = 1;
         final int maxInFlightBatches = 1;
@@ -204,13 +204,8 @@ public class BulkProcessorTest {
         final int addTimeoutMs = 10;
         bulkProcessor.add(42, addTimeoutMs);
         assertEquals(1, bulkProcessor.bufferedRecords());
-        try {
-            // BulkProcessor not started, so this add should timeout & throw
-            bulkProcessor.add(43, addTimeoutMs);
-            fail();
-        } catch (final ConnectException good) {
-            good.toString();
-        }
+        bulkProcessor.add(43, addTimeoutMs);
+        fail();
     }
 
     @Test

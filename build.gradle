@@ -80,7 +80,7 @@ publishing {
 
             pom {
                 name = "Aiven Kafka Elasticsearch connector"
-                description = "A Kafka Elasticsearch connector for copying data between Elasticsearch and Kafka."
+                description = "A Kafka Elasticsearch sink connector for copying data from Kafka to Elasticsearch."
                 url = "https://aiven.io"
                 organization {
                     name = "Aiven Oy"

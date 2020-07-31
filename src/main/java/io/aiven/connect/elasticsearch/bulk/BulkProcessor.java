@@ -436,6 +436,7 @@ public class BulkProcessor<R, B> {
 
     private boolean responseContainsMalformedDocError(final BulkResponse bulkRsp) {
         return bulkRsp.getErrorInfo().contains("mapper_parsing_exception")
+            || bulkRsp.getErrorInfo().contains("strict_dynamic_mapping_exception")
             || bulkRsp.getErrorInfo().contains("illegal_argument_exception");
     }
 

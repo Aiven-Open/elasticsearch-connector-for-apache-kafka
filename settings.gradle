@@ -1,1 +1,1 @@
-rootProject.name = 'aiven-kafka-connect-elasticsearch'
+rootProject.name = 'elasticsearch-connector-for-apache-kafka'

@@ -27,7 +27,7 @@ public class Version {
     private static final Logger log = LoggerFactory.getLogger(Version.class);
     private static String version = "unknown";
 
-    private static final String VERSION_FILE = "/aiven-kafka-connect-elasticsearch-version.properties";
+    private static final String VERSION_FILE = "/elasticsearch-connector-for-apache-kafka-version.properties";
 
     static {
         try {

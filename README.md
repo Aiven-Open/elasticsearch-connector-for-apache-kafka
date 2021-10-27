@@ -1,6 +1,4 @@
-# Kafka Connect Elasticsearch Connector
-
-[![Build Status](https://travis-ci.org/aiven/aiven-kafka-connect-elasticsearch.svg?branch=master)](https://travis-ci.org/aiven/aiven-kafka-connect-elasticsearch)
+# Aiven's Elasticsearch Sink Connector for Apache Kafka
 
 This repository includes a sink [Kafka Connect](http://kafka.apache.org/documentation.html#connect) connectors for Elasticsearch.
 
@@ -12,9 +10,9 @@ TBD
 
 # Contribute
 
-[Source Code](https://github.com/aiven/aiven-kafka-connect-elasticsearch)
+[Source Code](https://github.com/aiven/elasticsearch-connector-for-apache-kafka)
 
-[Issue Tracker](https://github.com/aiven/aiven-kafka-connect-elasticsearch/issues)
+[Issue Tracker](https://github.com/aiven/elasticsearch-connector-for-apache-kafka)
 
 # License
 

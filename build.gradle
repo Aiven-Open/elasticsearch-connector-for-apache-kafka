@@ -123,7 +123,7 @@ publishing {
 }
 
 ext {
-    kafkaVersion = "2.2.0"
+    kafkaVersion = "3.1.0"
     slf4jVersion = "1.7.25"
     elasticSearchVersion = "2.4.1"
     luceneVersion = "5.5.2"

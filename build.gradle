@@ -153,7 +153,7 @@ dependencies {
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-json:$kafkaVersion"
     testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
-    testImplementation "com.fasterxml.jackson.core:jackson-core:2.8.1"
+    testImplementation "com.fasterxml.jackson.core:jackson-core:2.13.2"
     testImplementation "com.fasterxml.jackson.core:jackson-databind:2.13.2"
     testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.13.2"
     testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"

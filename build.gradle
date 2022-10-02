@@ -155,7 +155,7 @@ dependencies {
     testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
     testImplementation "com.fasterxml.jackson.core:jackson-core:2.13.3"
     testImplementation "com.fasterxml.jackson.core:jackson-databind:2.13.4"
-    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.13.3"
+    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.13.4"
     testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"
     testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion"
     testImplementation "org.apache.lucene:lucene-expressions:$luceneVersion"

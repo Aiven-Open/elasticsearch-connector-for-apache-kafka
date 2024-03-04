@@ -57,11 +57,14 @@ wrapper {
 }
 
 ext {
+    guavaVersion = "11.0.2"
     kafkaVersion = "2.2.0"
-    slf4jVersion = "1.7.36"
-    elasticSearchVersion = "2.4.1"
-    luceneVersion = "5.5.2"
-    jestVersion = "6.3.1"
+    slf4jVersion = "2.0.12"
+    log4jVersion = "2.23.0"
+    elasticSearchVersion = "7.4.0"
+    elasticClientVersion = "7.17.0"
+    testContainersElasticVersion = "1.19.6"
+    carrotsearchVersion = "2.8.1"
 }
 
 compileJava {
@@ -82,7 +85,11 @@ dependencies {
     compileOnly "org.apache.kafka:connect-json:$kafkaVersion"
 
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
-    implementation "io.searchbox:jest:$jestVersion"
+    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:$elasticClientVersion"
+    implementation("com.google.guava:guava:$guavaVersion")
+
+    implementation "org.apache.logging.log4j:log4j-api:$log4jVersion"
+    implementation "org.apache.logging.log4j:log4j-core:$log4jVersion"
 
     testImplementation("junit:junit:4.13.2") {
         exclude group: 'org.hamcrest', module: 'hamcrest-core'
@@ -93,13 +100,8 @@ dependencies {
 
     testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
     testImplementation "org.apache.kafka:connect-json:$kafkaVersion"
-    testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
-    testImplementation "com.fasterxml.jackson.core:jackson-core:2.15.2"
-    testImplementation "com.fasterxml.jackson.core:jackson-databind:2.15.2"
-    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.17.0"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion"
-    testImplementation "org.apache.lucene:lucene-expressions:$luceneVersion"
+    testImplementation "org.testcontainers:elasticsearch:$testContainersElasticVersion"
+    implementation("com.carrotsearch.randomizedtesting:randomizedtesting-runner:$carrotsearchVersion")
     testRuntimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
 }
 
@@ -166,7 +168,6 @@ jar {
         )
     }
 }
-
 
 test {
 

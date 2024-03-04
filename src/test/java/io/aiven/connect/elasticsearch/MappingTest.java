@@ -17,6 +17,10 @@
 
 package io.aiven.connect.elasticsearch;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -28,10 +32,11 @@ import org.apache.kafka.connect.data.Timestamp;
 import com.fasterxml.jackson.databind.node.NumericNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.google.gson.JsonObject;
-import org.elasticsearch.test.InternalTestCluster;
+import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,16 +48,16 @@ public class MappingTest extends ElasticsearchSinkTestBase {
     @Test
     @SuppressWarnings("unchecked")
     public void testMapping() throws Exception {
-        final InternalTestCluster cluster = internalCluster();
-        cluster.ensureAtLeastNumDataNodes(1);
+        final Set<String> indices = new HashSet<>();
+        indices.add(INDEX);
+        client.createIndices(indices);
 
-        createIndex(INDEX);
         final Schema schema = createSchema();
         Mapping.createMapping(client, INDEX, TYPE, schema);
 
-        final JsonObject mapping = Mapping.getMapping(client, INDEX, TYPE);
+        final MappingMetadata mapping = Mapping.getMapping(client, INDEX, TYPE);
         assertNotNull(mapping);
-        verifyMapping(schema, mapping);
+        verifyMapping(schema, mapping.sourceAsMap());
     }
 
     @Test
@@ -64,7 +69,7 @@ public class MappingTest extends ElasticsearchSinkTestBase {
         final Schema schema = SchemaBuilder.struct().name("textRecord")
             .field("string", Schema.STRING_SCHEMA)
             .build();
-        final ObjectNode mapping = (ObjectNode) Mapping.inferMapping(client, schema);
+        final ObjectNode mapping = (ObjectNode) Mapping.inferMapping(client.getVersion(), schema);
         final ObjectNode properties = mapping.with("properties");
         final ObjectNode string = properties.with("string");
         final TextNode stringType = (TextNode) string.get("type");
@@ -121,25 +126,25 @@ public class MappingTest extends ElasticsearchSinkTestBase {
     }
 
     @SuppressWarnings("unchecked")
-    private void verifyMapping(final Schema schema, final JsonObject mapping) throws Exception {
+    private void verifyMapping(final Schema schema, final Map<String, Object> mapping) {
         final String schemaName = schema.name();
-
         final Object type = mapping.get("type");
         if (schemaName != null) {
             switch (schemaName) {
                 case Date.LOGICAL_NAME:
                 case Time.LOGICAL_NAME:
                 case Timestamp.LOGICAL_NAME:
-                    assertEquals("\"" + ElasticsearchSinkConnectorConstants.DATE_TYPE + "\"", type.toString());
+                    assertEquals(ElasticsearchSinkConnectorConstants.DATE_TYPE, type.toString());
                     return;
                 case Decimal.LOGICAL_NAME:
-                    assertEquals("\"" + ElasticsearchSinkConnectorConstants.DOUBLE_TYPE + "\"", type.toString());
+                    assertEquals(ElasticsearchSinkConnectorConstants.DOUBLE_TYPE, type.toString());
                     return;
                 default:
             }
         }
 
-        final DataConverter converter = new DataConverter(true, DataConverter.BehaviorOnNullValues.IGNORE);
+        final DataConverter converter =
+            new DataConverter(true, DataConverter.BehaviorOnNullValues.IGNORE);
         final Schema.Type schemaType = schema.type();
         switch (schemaType) {
             case ARRAY:
@@ -147,24 +152,26 @@ public class MappingTest extends ElasticsearchSinkTestBase {
                 break;
             case MAP:
                 final Schema newSchema = converter.preProcessSchema(schema);
-                final JsonObject mapProperties = mapping.get("properties").getAsJsonObject();
+                final Map<String, Map<String, Object>> mapMapping =
+                    (Map<String, Map<String, Object>>) mapping.get("properties");
                 verifyMapping(
                     newSchema.keySchema(),
-                    mapProperties.get(ElasticsearchSinkConnectorConstants.MAP_KEY).getAsJsonObject()
+                    mapMapping.get(ElasticsearchSinkConnectorConstants.MAP_KEY)
                 );
                 verifyMapping(
                     newSchema.valueSchema(),
-                    mapProperties.get(ElasticsearchSinkConnectorConstants.MAP_VALUE).getAsJsonObject()
+                    mapMapping.get(ElasticsearchSinkConnectorConstants.MAP_VALUE)
                 );
                 break;
             case STRUCT:
-                final JsonObject properties = mapping.get("properties").getAsJsonObject();
+                final Map<String, Map<String, Object>> structMapping =
+                    (Map<String, Map<String, Object>>) mapping.get("properties");
                 for (final Field field : schema.fields()) {
-                    verifyMapping(field.schema(), properties.get(field.name()).getAsJsonObject());
+                    verifyMapping(field.schema(), structMapping.get(field.name()));
                 }
                 break;
             default:
-                assertEquals("\"" + Mapping.getElasticsearchType(client, schemaType) + "\"", type.toString());
+                assertEquals(Mapping.getElasticsearchType(client.getVersion(), schemaType), type.toString());
         }
     }
 }

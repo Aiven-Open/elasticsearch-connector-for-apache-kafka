@@ -15,21 +15,18 @@
  * limitations under the License.
  */
 
-package io.aiven.connect.elasticsearch.jest;
+package io.aiven.connect.elasticsearch.clientwrapper;
 
 import io.aiven.connect.elasticsearch.bulk.BulkRequest;
 
-import io.searchbox.core.Bulk;
+public class ElasticsearchBulkRequest implements BulkRequest {
+    private final co.elastic.clients.elasticsearch.core.BulkRequest bulkRequest;
 
-public class JestBulkRequest implements BulkRequest {
-
-    private final Bulk bulk;
-
-    public JestBulkRequest(final Bulk bulk) {
-        this.bulk = bulk;
+    public ElasticsearchBulkRequest(final co.elastic.clients.elasticsearch.core.BulkRequest bulkRequest) {
+        this.bulkRequest = bulkRequest;
     }
 
-    public Bulk getBulk() {
-        return bulk;
+    public co.elastic.clients.elasticsearch.core.BulkRequest getBulkRequest() {
+        return bulkRequest;
     }
 }

@@ -48,7 +48,7 @@ java {
 }
 
 wrapper {
-    distributionType = 'ALL'
+    distributionType = "ALL"
     doLast {
         def sha256Sum = new String(new URL("${distributionUrl}.sha256").bytes)
         propertiesFile << "distributionSha256Sum=${sha256Sum}\n"
@@ -58,14 +58,14 @@ wrapper {
 
 ext {
     kafkaVersion = "2.2.0"
-    slf4jVersion = "1.7.36"
-    elasticSearchVersion = "2.4.1"
-    luceneVersion = "5.5.2"
-    jestVersion = "6.3.1"
+    slf4jVersion = "2.0.12"
+    elasticJavaClientVersion = "7.17.18"
+    testContainersElasticVersion = "1.19.6"
+    carrotsearchVersion = "2.8.1"
 }
 
 compileJava {
-    options.compilerArgs = ['-Xlint:all', '-Werror']
+    options.compilerArgs = ["-Xlint:all", "-Werror"]
 }
 
 checkstyle {
@@ -78,29 +78,23 @@ jacoco {
 }
 
 dependencies {
-    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
-    compileOnly "org.apache.kafka:connect-json:$kafkaVersion"
+    compileOnly("org.apache.kafka:connect-api:$kafkaVersion")
+    compileOnly("org.apache.kafka:connect-json:$kafkaVersion")
 
-    implementation "org.slf4j:slf4j-api:$slf4jVersion"
-    implementation "io.searchbox:jest:$jestVersion"
+    implementation("org.slf4j:slf4j-api:$slf4jVersion")
+    implementation("co.elastic.clients:elasticsearch-java:$elasticJavaClientVersion")
 
     testImplementation("junit:junit:4.13.2") {
-        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+        exclude(group: "org.hamcrest", module: "hamcrest-core")
     }
-    testImplementation "org.hamcrest:hamcrest-all:1.3"
-    testImplementation "org.mockito:mockito-core:5.11.0"
-    testImplementation "org.mockito:mockito-all:1.10.19"
+    testImplementation("org.hamcrest:hamcrest-all:1.3")
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito:mockito-all:1.10.19")
 
-    testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
-    testImplementation "org.apache.kafka:connect-json:$kafkaVersion"
-    testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
-    testImplementation "com.fasterxml.jackson.core:jackson-core:2.17.0"
-    testImplementation "com.fasterxml.jackson.core:jackson-databind:2.17.0"
-    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.17.0"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion"
-    testImplementation "org.apache.lucene:lucene-expressions:$luceneVersion"
-    testRuntimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
+    testImplementation("org.apache.kafka:connect-json:$kafkaVersion")
+    testImplementation("org.testcontainers:elasticsearch:$testContainersElasticVersion")
+    testImplementation("com.carrotsearch.randomizedtesting:randomizedtesting-runner:$carrotsearchVersion")
+    testRuntimeOnly("org.slf4j:slf4j-log4j12:$slf4jVersion")
 }
 
 distributions {
@@ -154,7 +148,7 @@ publishing {
 }
 
 processResources {
-    filesMatching('elasticsearch-connector-for-apache-kafka-version.properties') {
+    filesMatching("elasticsearch-connector-for-apache-kafka-version.properties") {
         expand(version: version)
     }
 }
@@ -167,13 +161,10 @@ jar {
     }
 }
 
+def elasticsearch7Test = tasks.register("elasticsearch7Test", Test) {
+    environment("ELASTIC_TEST_CONTAINER_VERSION", "7.17.0")
+}
 
-test {
-
-    //we do not need to check classpath hell for testing
-    systemProperty "tests.jarhell.check", "false"
-
-    //tests.security.manager is true all ElasticsearchSinkTestBase aware test hang
-    systemProperty "tests.security.manager", "false"
-
+tasks.named("check") {
+    dependsOn elasticsearch7Test
 }

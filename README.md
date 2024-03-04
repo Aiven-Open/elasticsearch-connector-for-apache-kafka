@@ -6,13 +6,13 @@ The project originates from Confluent [kafka-connect-elasticsearch](https://gith
 
 # Documentation
 
-TBD
+Supported Elasticsearch versions are 7.17.0+
 
 # Contribute
 
-[Source Code](https://github.com/aiven/elasticsearch-connector-for-apache-kafka)
+[Source Code](https://github.com/Aiven-Open/elasticsearch-connector-for-apache-kafka)
 
-[Issue Tracker](https://github.com/aiven/elasticsearch-connector-for-apache-kafka)
+[Issue Tracker](https://github.com/Aiven-Open/elasticsearch-connector-for-apache-kafka)
 
 # License
 

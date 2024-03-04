@@ -29,10 +29,10 @@ import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 
+import co.elastic.clients.elasticsearch._types.mapping.Property;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonObject;
 
 public class Mapping {
 
@@ -43,7 +43,7 @@ public class Mapping {
      * @param index  The index to write to Elasticsearch.
      * @param type   The type to create mapping for.
      * @param schema The schema used to infer mapping.
-     * @throws IOException from underlying JestClient
+     * @throws IOException from underlying client
      */
     public static void createMapping(
         final ElasticsearchClient client,
@@ -57,7 +57,7 @@ public class Mapping {
     /**
      * Get the JSON mapping for given index and type. Returns {@code null} if it does not exist.
      */
-    public static JsonObject getMapping(final ElasticsearchClient client, final String index, final String type)
+    public static Property getMapping(final ElasticsearchClient client, final String index, final String type)
         throws IOException {
         return client.getMapping(index, type);
     }
@@ -67,7 +67,7 @@ public class Mapping {
      *
      * @param schema The schema used to infer mapping.
      */
-    public static JsonNode inferMapping(final ElasticsearchClient client, final Schema schema) {
+    public static JsonNode inferMapping(final ElasticsearchClient.Version version, final Schema schema) {
         if (schema == null) {
             throw new DataException("Cannot infer mapping without schema.");
         }
@@ -83,26 +83,26 @@ public class Mapping {
         final ObjectNode fields = JsonNodeFactory.instance.objectNode();
         switch (schemaType) {
             case ARRAY:
-                return inferMapping(client, schema.valueSchema());
+                return inferMapping(version, schema.valueSchema());
             case MAP:
                 properties.set("properties", fields);
-                fields.set(ElasticsearchSinkConnectorConstants.MAP_KEY, inferMapping(client, schema.keySchema()));
-                fields.set(ElasticsearchSinkConnectorConstants.MAP_VALUE, inferMapping(client, schema.valueSchema()));
+                fields.set(ElasticsearchSinkConnectorConstants.MAP_KEY, inferMapping(version, schema.keySchema()));
+                fields.set(ElasticsearchSinkConnectorConstants.MAP_VALUE, inferMapping(version, schema.valueSchema()));
                 return properties;
             case STRUCT:
                 properties.set("properties", fields);
                 for (final Field field : schema.fields()) {
-                    fields.set(field.name(), inferMapping(client, field.schema()));
+                    fields.set(field.name(), inferMapping(version, field.schema()));
                 }
                 return properties;
             default:
-                final String esType = getElasticsearchType(client, schemaType);
+                final String esType = getElasticsearchType(version, schemaType);
                 return inferPrimitive(esType, schema.defaultValue());
         }
     }
 
     // visible for testing
-    protected static String getElasticsearchType(final ElasticsearchClient client,
+    protected static String getElasticsearchType(final ElasticsearchClient.Version version,
                                                  final Schema.Type schemaType) {
         switch (schemaType) {
             case BOOLEAN:
@@ -120,7 +120,7 @@ public class Mapping {
             case FLOAT64:
                 return ElasticsearchSinkConnectorConstants.DOUBLE_TYPE;
             case STRING:
-                switch (client.getVersion()) {
+                switch (version) {
                     case ES_V1:
                     case ES_V2:
                         return ElasticsearchSinkConnectorConstants.STRING_TYPE;

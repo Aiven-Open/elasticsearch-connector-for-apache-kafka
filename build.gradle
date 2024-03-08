@@ -169,7 +169,6 @@ jar {
 
 
 test {
-    useJUnitPlatform()
 
     //we do not need to check classpath hell for testing
     systemProperty "tests.jarhell.check", "false"

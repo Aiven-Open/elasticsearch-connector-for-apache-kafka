@@ -25,23 +25,18 @@ import org.slf4j.LoggerFactory;
 
 public class Version {
     private static final Logger log = LoggerFactory.getLogger(Version.class);
-    private static String version = "unknown";
+    private static final String PROPERTIES_FILENAME = "elasticsearch-connector-for-apache-kafka-version.properties";
 
-    private static final String VERSION_FILE = "/aiven-kafka-connect-elasticsearch-version.properties";
+    static final String VERSION;
 
     static {
-        try {
-            final Properties props = new Properties();
-            try (InputStream versionFileStream = Version.class.getResourceAsStream(VERSION_FILE)) {
-                props.load(versionFileStream);
-                version = props.getProperty("version", version).trim();
-            }
+        final Properties props = new Properties();
+        try (final InputStream resourceStream =
+                 Version.class.getClassLoader().getResourceAsStream(PROPERTIES_FILENAME)) {
+            props.load(resourceStream);
         } catch (final Exception e) {
-            log.warn("Error while loading version:", e);
+            log.warn("Error while loading {}: {}", PROPERTIES_FILENAME, e.getMessage());
         }
-    }
-
-    public static String getVersion() {
-        return version;
+        VERSION = props.getProperty("version", "unknown").trim();
     }
 }

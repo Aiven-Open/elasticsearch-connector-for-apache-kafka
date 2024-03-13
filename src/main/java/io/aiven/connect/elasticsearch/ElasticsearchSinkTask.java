@@ -47,7 +47,7 @@ public class ElasticsearchSinkTask extends SinkTask {
 
     @Override
     public String version() {
-        return Version.getVersion();
+        return Version.VERSION;
     }
 
     @Override

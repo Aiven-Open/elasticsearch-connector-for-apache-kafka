@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-import org.gradle.util.DistributionLocator
-import org.gradle.util.GradleVersion
-
 plugins {
 
     // https://docs.gradle.org/current/userguide/java_library_plugin.html
@@ -40,23 +37,31 @@ repositories {
     mavenCentral()
 }
 
+group = "io.aiven"
+
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
-}
 
+    withJavadocJar()
+    withSourcesJar()
+}
 
 wrapper {
     distributionType = 'ALL'
     doLast {
-        final DistributionLocator locator = new DistributionLocator()
-        final GradleVersion version = GradleVersion.version(wrapper.gradleVersion)
-        final URI distributionUri = locator.getDistributionFor(version, wrapper.distributionType.name().toLowerCase(Locale.ENGLISH))
-        final URI sha256Uri = new URI(distributionUri.toString() + ".sha256")
-        final String sha256Sum = new String(sha256Uri.toURL().bytes)
-        wrapper.getPropertiesFile() << "distributionSha256Sum=${sha256Sum}\n"
+        def sha256Sum = new String(new URL("${distributionUrl}.sha256").bytes)
+        propertiesFile << "distributionSha256Sum=${sha256Sum}\n"
         println "Added checksum to wrapper properties"
     }
+}
+
+ext {
+    kafkaVersion = "2.2.0"
+    slf4jVersion = "1.7.36"
+    elasticSearchVersion = "2.4.1"
+    luceneVersion = "5.5.2"
+    jestVersion = "6.3.1"
 }
 
 compileJava {
@@ -70,6 +75,32 @@ checkstyle {
 
 jacoco {
     toolVersion = "0.8.7"
+}
+
+dependencies {
+    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
+    compileOnly "org.apache.kafka:connect-json:$kafkaVersion"
+
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
+    implementation "io.searchbox:jest:$jestVersion"
+
+    testImplementation("junit:junit:4.13.2") {
+        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+    }
+    testImplementation "org.hamcrest:hamcrest-all:1.3"
+    testImplementation "org.mockito:mockito-core:5.4.0"
+    testImplementation "org.mockito:mockito-all:1.10.19"
+
+    testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
+    testImplementation "org.apache.kafka:connect-json:$kafkaVersion"
+    testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
+    testImplementation "com.fasterxml.jackson.core:jackson-core:2.15.2"
+    testImplementation "com.fasterxml.jackson.core:jackson-databind:2.15.2"
+    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.15.2"
+    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"
+    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion"
+    testImplementation "org.apache.lucene:lucene-expressions:$luceneVersion"
+    testRuntimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
 }
 
 distributions {
@@ -122,45 +153,20 @@ publishing {
     }
 }
 
-ext {
-    kafkaVersion = "2.2.0"
-    slf4jVersion = "1.7.36"
-    elasticSearchVersion = "2.4.1"
-    luceneVersion = "5.5.2"
-    jestVersion = "6.3.1"
-}
-
 processResources {
     filesMatching('elasticsearch-connector-for-apache-kafka-version.properties') {
         expand(version: version)
     }
 }
 
-dependencies {
-    compileOnly "org.apache.kafka:connect-api:$kafkaVersion"
-    compileOnly "org.apache.kafka:connect-json:$kafkaVersion"
-
-    implementation "org.slf4j:slf4j-api:$slf4jVersion"
-    implementation "io.searchbox:jest:$jestVersion"
-
-    testImplementation("junit:junit:4.13.2") {
-        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+jar {
+    manifest {
+        attributes(
+                'Version': "${project.version}"
+        )
     }
-    testImplementation "org.hamcrest:hamcrest-all:1.3"
-    testImplementation "org.mockito:mockito-core:5.11.0"
-    testImplementation "org.mockito:mockito-all:1.10.19"
-
-    testImplementation "org.apache.kafka:connect-api:$kafkaVersion"
-    testImplementation "org.apache.kafka:connect-json:$kafkaVersion"
-    testImplementation "org.apache.lucene:lucene-test-framework:$luceneVersion"
-    testImplementation "com.fasterxml.jackson.core:jackson-core:2.15.2"
-    testImplementation "com.fasterxml.jackson.core:jackson-databind:2.15.2"
-    testImplementation "com.fasterxml.jackson.core:jackson-annotations:2.15.2"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion:tests"
-    testImplementation "org.elasticsearch:elasticsearch:$elasticSearchVersion"
-    testImplementation "org.apache.lucene:lucene-expressions:$luceneVersion"
-    testRuntimeOnly "org.slf4j:slf4j-log4j12:$slf4jVersion"
 }
+
 
 test {
 

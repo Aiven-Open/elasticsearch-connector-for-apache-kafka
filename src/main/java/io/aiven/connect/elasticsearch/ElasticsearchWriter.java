@@ -284,16 +284,15 @@ public class ElasticsearchWriter {
         final boolean ignoreKey,
         final boolean ignoreSchema) {
 
+        IndexableRecord record = null;
         try {
-            final IndexableRecord record = converter.convertRecord(
+            record = converter.convertRecord(
                 sinkRecord,
                 index,
                 type,
                 ignoreKey,
-                ignoreSchema);
-            if (record != null) {
-                bulkProcessor.add(record, flushTimeoutMs);
-            }
+                ignoreSchema
+            );
         } catch (final ConnectException convertException) {
             if (dropInvalidMessage) {
                 log.error(
@@ -307,6 +306,10 @@ public class ElasticsearchWriter {
             } else {
                 throw convertException;
             }
+        }
+
+        if (record != null) {
+            bulkProcessor.add(record, flushTimeoutMs);
         }
     }
 

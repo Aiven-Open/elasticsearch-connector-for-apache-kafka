@@ -18,10 +18,10 @@
 package io.aiven.connect.elasticsearch.clientwrapper;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -39,6 +39,25 @@ import io.aiven.connect.elasticsearch.Mapping;
 import io.aiven.connect.elasticsearch.bulk.BulkRequest;
 import io.aiven.connect.elasticsearch.bulk.BulkResponse;
 
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.VersionType;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
+import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import co.elastic.clients.elasticsearch.indices.GetMappingRequest;
+import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import co.elastic.clients.elasticsearch.indices.PutMappingRequest;
+import co.elastic.clients.elasticsearch.indices.RefreshRequest;
+import co.elastic.clients.elasticsearch.indices.get_mapping.IndexMappingRecord;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.util.BinaryData;
+import co.elastic.clients.util.ContentType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -48,51 +67,26 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.DocWriteRequest;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.delete.DeleteRequest;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.RestHighLevelClientBuilder;
-import org.elasticsearch.client.core.MainResponse;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetMappingsRequest;
-import org.elasticsearch.client.indices.GetMappingsResponse;
-import org.elasticsearch.client.indices.PutMappingRequest;
-import org.elasticsearch.cluster.metadata.MappingMetadata;
-import org.elasticsearch.index.VersionType;
-import org.elasticsearch.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
+public class ElasticsearchClientWrapper implements ElasticsearchClient {
 
-    // visible for testing
-    protected static final String MAPPER_PARSE_EXCEPTION
-        = "mapper_parse_exception";
-    protected static final String VERSION_CONFLICT_ENGINE_EXCEPTION
-        = "version_conflict_engine_exception";
+    private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchClientWrapper.class);
 
-    private static final Logger LOG = LoggerFactory.getLogger(AivenElasticsearchClientWrapper.class);
-
-    @SuppressWarnings("deprecation")
-    private final RestHighLevelClient elasticClient;
+    private final ElasticsearchTransport elasticTransport;
+    private final co.elastic.clients.elasticsearch.ElasticsearchClient elasticClient;
     private final Version version;
 
     // visible for testing
-    @SuppressWarnings("deprecation")
-
-    public AivenElasticsearchClientWrapper(final RestHighLevelClient client) {
+    public ElasticsearchClientWrapper(
+        final ElasticsearchTransport elasticTransport,
+        final co.elastic.clients.elasticsearch.ElasticsearchClient elasticClient) {
         try {
-            this.elasticClient = client;
+            this.elasticTransport = elasticTransport;
+            this.elasticClient = elasticClient;
             this.version = getServerVersion();
         } catch (final IOException e) {
             throw new ConnectException(
@@ -103,30 +97,10 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
     }
 
     // visible for testing
-    public AivenElasticsearchClientWrapper(final String address) {
+    public ElasticsearchClientWrapper(final ElasticsearchSinkConnectorConfig config) {
         try {
-            final Map<String, String> props = new HashMap<>();
-            props.put(ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG, address);
-            props.put(ElasticsearchSinkConnectorConfig.TYPE_NAME_CONFIG, "kafka-connect");
-            this.elasticClient = getElasticsearchClient(new ElasticsearchSinkConnectorConfig(props));
-            this.version = getServerVersion();
-        } catch (final IOException e) {
-            throw new ConnectException(
-                "Couldn't start ElasticsearchSinkTask due to connection error:",
-                e
-            );
-        } catch (final ConfigException e) {
-            throw new ConnectException(
-                "Couldn't start ElasticsearchSinkTask due to configuration error:",
-                e
-            );
-        }
-    }
-
-    // visible for testing
-    public AivenElasticsearchClientWrapper(final ElasticsearchSinkConnectorConfig config) {
-        try {
-            this.elasticClient = getElasticsearchClient(config);
+            this.elasticTransport = getElasticsearchTransport(config);
+            this.elasticClient = getElasticsearchClient();
             this.version = getServerVersion();
         } catch (final IOException e) {
             throw new ConnectException(
@@ -142,7 +116,7 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
     }
 
     private Version getServerVersion() throws IOException {
-        final String esVersion = this.elasticClient.info(RequestOptions.DEFAULT).getVersion().getNumber();
+        final String esVersion = this.elasticClient.info().version().number();
         return matchVersionString(esVersion);
     }
 
@@ -168,12 +142,7 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
         return defaultVersion;
     }
 
-    private boolean es8compat(final Version version) {
-        return Objects.requireNonNull(version) == Version.ES_V8;
-    }
-
-    @SuppressWarnings("deprecation")
-    private RestHighLevelClient getElasticsearchClient(final ElasticsearchSinkConnectorConfig config) {
+    private ElasticsearchTransport getElasticsearchTransport(final ElasticsearchSinkConnectorConfig config) {
         final HttpHost[] httpHosts =
             config.getList(ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG).stream().map(HttpHost::create)
                 .toArray(HttpHost[]::new);
@@ -210,22 +179,15 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
         });
 
         final RestClient restClient = restClientBuilder.build();
-        final Version version = resolveVersion(restClient);
-        return new RestHighLevelClientBuilder(restClient)
-            .setApiCompatibilityMode(es8compat(version))
-            .build();
+        return new RestClientTransport(
+            restClient,
+            new JacksonJsonpMapper()
+        );
     }
 
-    @SuppressWarnings("deprecation")
-    private Version resolveVersion(final RestClient restClient) {
-        // No auto-closing, it would close also the restClient.
-        final RestHighLevelClient highLevelClient = new RestHighLevelClientBuilder(restClient).build();
-        try {
-            final MainResponse.Version version = highLevelClient.info(RequestOptions.DEFAULT).getVersion();
-            return matchVersionString(version.getNumber());
-        } catch (final IOException e) {
-            throw new ConnectException("Failed to get ElasticSearch version.", e);
-        }
+    private co.elastic.clients.elasticsearch.ElasticsearchClient getElasticsearchClient() {
+        Objects.requireNonNull(this.elasticTransport);
+        return new co.elastic.clients.elasticsearch.ElasticsearchClient(this.elasticTransport);
     }
 
     public Version getVersion() {
@@ -233,9 +195,10 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
     }
 
     private boolean indexExists(final String index) {
-        final GetIndexRequest getIndexRequest = new GetIndexRequest(index);
+        final ExistsRequest existsRequest = new ExistsRequest.Builder()
+            .index(index).build();
         try {
-            return elasticClient.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
+            return elasticClient.indices().exists(existsRequest).value();
         } catch (final IOException e) {
             throw new ConnectException(e);
         }
@@ -244,9 +207,10 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
     public void createIndices(final Set<String> indices) {
         for (final String index : indices) {
             if (!indexExists(index)) {
-                final CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);
+                final CreateIndexRequest createIndexRequest = new CreateIndexRequest.Builder()
+                    .index(index).build();
                 try {
-                    elasticClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+                    elasticClient.indices().create(createIndexRequest);
                 } catch (final IOException e) {
                     throw new ConnectException("Could not create index '" + index + "'", e);
                 }
@@ -255,71 +219,88 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
     }
 
     public void createMapping(final String index, final String type, final Schema schema) throws IOException {
-        final ObjectNode obj = JsonNodeFactory.instance.objectNode();
-        obj.set(type, Mapping.inferMapping(getVersion(), schema));
-        final JsonNode part = Mapping.inferMapping(getVersion(), schema);
-        final PutMappingRequest request = new PutMappingRequest(index)
-            .source(part.toString(), XContentType.JSON);
+        final ObjectNode root = JsonNodeFactory.instance.objectNode();
+        final JsonNode mapping = Mapping.inferMapping(getVersion(), schema);
+        final ObjectNode typeNode = JsonNodeFactory.instance.objectNode();
+        typeNode.set(type, mapping);
+        root.set("properties", typeNode);
+        final PutMappingRequest request = new PutMappingRequest.Builder()
+            .index(index)
+            .withJson(new StringReader(root.toString()))
+            .build();
+
         try {
-            this.elasticClient.indices().putMapping(request, RequestOptions.DEFAULT);
+            this.elasticClient.indices().putMapping(request);
         } catch (final ElasticsearchException exception) {
             throw new ConnectException(
-                "Cannot create mapping " + schema + " -- " + exception.getDetailedMessage()
+                "Cannot create mapping " + schema + " -- " + exception.getMessage()
             );
         }
     }
 
     /**
-     * Get the JSON mapping for given index and type. Returns {@code null} if it does not exist.
+     * Get the mapping for given index and type. Returns {@code null} if it does not exist.
      */
     @Override
-    public MappingMetadata getMapping(final String index, final String type) throws IOException {
-        final GetMappingsRequest request = new GetMappingsRequest()
-            .indices(index);
-        final GetMappingsResponse response = this.elasticClient.indices().getMapping(request, RequestOptions.DEFAULT);
-        if (response.mappings().isEmpty()) {
+    public Property getMapping(final String index, final String type) throws IOException {
+        final GetMappingRequest request = new GetMappingRequest.Builder()
+            .index(index).build();
+        final GetMappingResponse response = this.elasticClient.indices().getMapping(request);
+        final IndexMappingRecord indexMappingRecord = response.get(index);
+        if (indexMappingRecord == null) {
             return null;
         }
-        return response.mappings().get(index);
+        return indexMappingRecord.mappings().properties().get(type);
     }
 
     public BulkRequest createBulkRequest(final List<IndexableRecord> batch) {
-        final org.elasticsearch.action.bulk.BulkRequest bulkRequest = new org.elasticsearch.action.bulk.BulkRequest();
+        final List<BulkOperation> bulkOperations = new ArrayList<>();
         for (final IndexableRecord record : batch) {
-            bulkRequest.add(toBulkableAction(record));
+            bulkOperations.add(toBulkableOperation(record));
         }
-        return new BulkRequestImpl(bulkRequest);
+        final co.elastic.clients.elasticsearch.core.BulkRequest bulkRequest =
+            new co.elastic.clients.elasticsearch.core.BulkRequest.Builder()
+                .operations(bulkOperations)
+                .build();
+        return new ElasticsearchBulkRequest(bulkRequest);
     }
 
     // visible for testing
-    protected DocWriteRequest<?> toBulkableAction(final IndexableRecord record) {
+    protected BulkOperation toBulkableOperation(final IndexableRecord record) {
         // If payload is null, the record was a tombstone and we should delete from the index.
-        return record.payload != null ? toIndexRequest(record) : toDeleteRequest(record);
+        return record.payload != null ? toIndexOperation(record) : toDeleteOperation(record);
     }
 
-    private DeleteRequest toDeleteRequest(final IndexableRecord record) {
+    private BulkOperation toDeleteOperation(final IndexableRecord record) {
         // TODO: Should version information be set here?
-        return new DeleteRequest(record.key.index).id(record.key.id);
+        return new BulkOperation.Builder().delete(operation -> operation
+            .index(record.key.index)
+            .id(record.key.id)
+        ).build();
     }
 
-    private IndexRequest toIndexRequest(final IndexableRecord record) {
-        final IndexRequest indexRequest = new IndexRequest(record.key.index)
-            .id(record.key.id)
-            .source(record.payload, XContentType.JSON);
-        if (record.version != null) {
-            indexRequest
-                .versionType(VersionType.EXTERNAL)
-                .version(record.version);
-        }
-        return indexRequest;
+    private BulkOperation toIndexOperation(final IndexableRecord record) {
+        final BinaryData binaryPayload =
+            BinaryData.of(record.payload.getBytes(StandardCharsets.UTF_8), ContentType.APPLICATION_JSON);
+        return new BulkOperation.Builder().index(operation -> {
+            operation
+                .index(record.key.index)
+                .id(record.key.id)
+                .document(binaryPayload);
+            if (record.version != null) {
+                operation
+                    .versionType(VersionType.External)
+                    .version(record.version);
+            }
+            return operation;
+        }).build();
     }
 
     public BulkResponse executeBulk(final BulkRequest bulk) throws IOException {
-        final BulkRequestImpl bulkRequest = (BulkRequestImpl) bulk;
-        final org.elasticsearch.action.bulk.BulkResponse
-            response = elasticClient.bulk(bulkRequest.getBulkRequest(), RequestOptions.DEFAULT);
+        final co.elastic.clients.elasticsearch.core.BulkResponse response =
+            elasticClient.bulk(((ElasticsearchBulkRequest) bulk).getBulkRequest());
 
-        if (!response.hasFailures()) {
+        if (!response.errors()) {
             return BulkResponse.success();
         }
 
@@ -328,17 +309,16 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
         final List<Key> versionConflicts = new ArrayList<>();
         final List<String> errors = new ArrayList<>();
 
-        for (final BulkItemResponse item : response.getItems()) {
-            if (item.isFailed()) {
-                final BulkItemResponse.Failure failure = item.getFailure();
-                final String errorType = Optional.ofNullable(failure.getCause().getMessage()).orElse("");
-                if (errorType.contains("version_conflict_engine_exception")) {
-                    versionConflicts.add(new Key(item.getIndex(), item.getType(), item.getId()));
-                } else if (errorType.contains("mapper_parse_exception")) {
+        for (final BulkResponseItem item : response.items()) {
+            if (item.error() != null) {
+                final String errorType = item.error().type();
+                if ("version_conflict_engine_exception".equals(errorType)) {
+                    versionConflicts.add(new Key(item.index(), item.operationType().name(), item.id()));
+                } else if ("mapper_parse_exception".equals(errorType)) {
                     retriable = false;
-                    errors.add(item.getFailureMessage());
+                    errors.add(item.error().reason());
                 } else {
-                    errors.add(item.getFailureMessage());
+                    errors.add(item.error().reason());
                 }
             }
         }
@@ -351,26 +331,33 @@ public class AivenElasticsearchClientWrapper implements ElasticsearchClient {
             }
         }
 
-        final String errorInfo = errors.isEmpty() ? response.buildFailureMessage() : errors.toString();
+        final String errorInfo = errors.isEmpty()
+            ? "Errors present, but error information missing."
+            : errors.toString();
+        LOG.trace("Bulk response: {}", response);
 
         return BulkResponse.failure(retriable, errorInfo);
     }
 
+    // visible for testing
     @Override
-    public SearchResponse search(final String index) throws IOException {
-        final SearchRequest searchRequest = new SearchRequest();
+    public SearchResponse<JsonNode> search(final String index) throws IOException {
+        final SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
+
         if (index != null) {
-            searchRequest.indices(index);
+            searchRequestBuilder.index(index);
         }
-        return elasticClient.search(searchRequest, RequestOptions.DEFAULT);
+        return elasticClient.search(searchRequestBuilder.build(), JsonNode.class);
     }
 
-    public void refresh(final String index) throws IOException {
-        final RefreshRequest request = new RefreshRequest(index);
-        elasticClient.indices().refresh(request, RequestOptions.DEFAULT);
+    public void refreshIndex(final String index) throws IOException {
+        final RefreshRequest request = new RefreshRequest.Builder()
+            .index(index)
+            .build();
+        elasticClient.indices().refresh(request);
     }
 
     public void close() throws IOException {
-        elasticClient.close();
+        elasticTransport.close();
     }
 }

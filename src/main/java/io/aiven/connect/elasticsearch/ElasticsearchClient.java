@@ -26,8 +26,9 @@ import org.apache.kafka.connect.data.Schema;
 import io.aiven.connect.elasticsearch.bulk.BulkRequest;
 import io.aiven.connect.elasticsearch.bulk.BulkResponse;
 
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.cluster.metadata.MappingMetadata;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public interface ElasticsearchClient extends AutoCloseable {
 
@@ -66,7 +67,7 @@ public interface ElasticsearchClient extends AutoCloseable {
      * @param type  the type
      * @throws IOException if the client cannot execute the request
      */
-    MappingMetadata getMapping(String index, String type) throws IOException;
+    Property getMapping(String index, String type) throws IOException;
 
     /**
      * Creates a bulk request for the list of {@link IndexableRecord} records.
@@ -92,14 +93,14 @@ public interface ElasticsearchClient extends AutoCloseable {
      * @return the search result
      * @throws IOException if the client cannot execute the request
      */
-    SearchResponse search(String index) throws IOException;
+    SearchResponse<JsonNode> search(String index) throws IOException;
 
     /**
-     * Executes a search.
+     * Refreshes the index.
      *
      * @param index the index to refresh
      */
-    void refresh(String index) throws IOException;
+    void refreshIndex(String index) throws IOException;
 
     /**
      * Shuts down the client.

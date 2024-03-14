@@ -29,10 +29,10 @@ import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 
+import co.elastic.clients.elasticsearch._types.mapping.Property;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.elasticsearch.cluster.metadata.MappingMetadata;
 
 public class Mapping {
 
@@ -57,7 +57,7 @@ public class Mapping {
     /**
      * Get the JSON mapping for given index and type. Returns {@code null} if it does not exist.
      */
-    public static MappingMetadata getMapping(final ElasticsearchClient client, final String index, final String type)
+    public static Property getMapping(final ElasticsearchClient client, final String index, final String type)
         throws IOException {
         return client.getMapping(index, type);
     }

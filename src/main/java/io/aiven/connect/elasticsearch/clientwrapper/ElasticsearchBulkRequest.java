@@ -19,14 +19,14 @@ package io.aiven.connect.elasticsearch.clientwrapper;
 
 import io.aiven.connect.elasticsearch.bulk.BulkRequest;
 
-public class BulkRequestImpl implements BulkRequest {
-    private final org.elasticsearch.action.bulk.BulkRequest bulkRequest;
+public class ElasticsearchBulkRequest implements BulkRequest {
+    private final co.elastic.clients.elasticsearch.core.BulkRequest bulkRequest;
 
-    public BulkRequestImpl(final org.elasticsearch.action.bulk.BulkRequest bulkRequest) {
+    public ElasticsearchBulkRequest(final co.elastic.clients.elasticsearch.core.BulkRequest bulkRequest) {
         this.bulkRequest = bulkRequest;
     }
 
-    public org.elasticsearch.action.bulk.BulkRequest getBulkRequest() {
+    public co.elastic.clients.elasticsearch.core.BulkRequest getBulkRequest() {
         return bulkRequest;
     }
 }

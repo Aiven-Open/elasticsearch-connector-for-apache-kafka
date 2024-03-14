@@ -20,6 +20,7 @@ package io.aiven.connect.elasticsearch;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,10 +30,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import io.aiven.connect.elasticsearch.clientwrapper.AivenElasticsearchClientWrapper;
+import io.aiven.connect.elasticsearch.clientwrapper.ElasticsearchClientWrapper;
 
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.SearchHit;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -44,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 
 public class ElasticsearchSinkTestBase {
 
+    private static final String DEFAULT_ELASTICSEARCH_TEST_CONTAINER_VERSION = "8.12.2";
     private static final String ELASTICSEARCH_PASSWORD = "disable_tls_for_testing";
     protected static final String TYPE = "kafka-connect";
 
@@ -64,12 +67,28 @@ public class ElasticsearchSinkTestBase {
 
     @BeforeClass
     public static void staticSetUp() {
-        container = new ElasticsearchContainer("elasticsearch:8.12.2")
+        final String elasticsearchContainerVersion = System.getenv().getOrDefault(
+            "ELASTIC_TEST_CONTAINER_VERSION",
+            DEFAULT_ELASTICSEARCH_TEST_CONTAINER_VERSION
+        );
+        container = new ElasticsearchContainer("elasticsearch:" + elasticsearchContainerVersion)
             .withPassword(ELASTICSEARCH_PASSWORD);
         container.getEnvMap().put("xpack.security.transport.ssl.enabled", "false");
         container.getEnvMap().put("xpack.security.http.ssl.enabled", "false");
-        container.setWaitStrategy(new LogMessageWaitStrategy().withRegEx(".*\"message\":\"started.*"));
+        container.setWaitStrategy(new LogMessageWaitStrategy()
+            .withRegEx(getLogMessageWaitStrategyRegex(elasticsearchContainerVersion)));
         container.start();
+    }
+
+    private static String getLogMessageWaitStrategyRegex(final String elasticContainerVersion) {
+        final char majorVersion = elasticContainerVersion.charAt(0);
+        switch (majorVersion) {
+            case '7':
+                return ".*\"message\": \"started.*";
+            default:
+                // Default to major version 8 log message
+                return ".*\"message\":\"started.*";
+        }
     }
 
     @Before
@@ -80,7 +99,7 @@ public class ElasticsearchSinkTestBase {
         props.put(ElasticsearchSinkConnectorConfig.CONNECTION_USERNAME_CONFIG, "elastic");
         props.put(ElasticsearchSinkConnectorConfig.TYPE_NAME_CONFIG, "kafka-connect");
         final ElasticsearchSinkConnectorConfig config = new ElasticsearchSinkConnectorConfig(props);
-        client = new AivenElasticsearchClientWrapper(config);
+        client = new ElasticsearchClientWrapper(config);
         converter = new DataConverter(true, DataConverter.BehaviorOnNullValues.IGNORE);
     }
 
@@ -146,15 +165,15 @@ public class ElasticsearchSinkTestBase {
         final String index,
         final boolean ignoreKey,
         final boolean ignoreSchema) throws IOException {
-        final SearchResponse result = client.search(index);
-        final SearchHit[] rawHits = result.getHits().getHits();
+        final SearchResponse<JsonNode> result = client.search(index);
+        final List<Hit<JsonNode>> rawHits = result.hits().hits();
 
-        assertEquals(records.size(), rawHits.length);
+        assertEquals(records.size(), rawHits.size());
 
         final Map<String, String> hits = new HashMap<>();
-        for (int i = 0; i < rawHits.length; ++i) {
-            final String id = rawHits[i].getId();
-            final String source = rawHits[i].getSourceAsString();
+        for (final Hit<JsonNode> hit: rawHits) {
+            final String id = hit.id();
+            final String source = hit.source().toString();
             hits.put(id, source);
         }
 

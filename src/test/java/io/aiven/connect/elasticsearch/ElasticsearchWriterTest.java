@@ -352,7 +352,7 @@ public class ElasticsearchWriterTest extends ElasticsearchSinkTestBase {
         // Can't call writeDataAndRefresh(writer, records) since it stops the writer
         writer.write(records);
         writer.flush();
-        client.refresh(getTopic());
+        client.refreshIndex(getTopic());
         // Make sure the record made it there successfully
         verifySearchResults(records);
 
@@ -534,7 +534,7 @@ public class ElasticsearchWriterTest extends ElasticsearchSinkTestBase {
         writer.write(records);
         writer.flush();
         writer.stop();
-        client.refresh(index);
+        client.refreshIndex(index);
     }
 
     private void verifySearchResults(final Collection<SinkRecord> records) throws Exception {

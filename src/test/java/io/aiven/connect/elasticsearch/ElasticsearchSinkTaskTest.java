@@ -31,9 +31,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
-import org.elasticsearch.test.InternalTestCluster;
 import org.junit.Test;
 
+import static org.junit.Assert.fail;
 
 @ThreadLeakScope(ThreadLeakScope.Scope.NONE)
 public class ElasticsearchSinkTaskTest extends ElasticsearchSinkTestBase {
@@ -52,13 +52,15 @@ public class ElasticsearchSinkTaskTest extends ElasticsearchSinkTestBase {
 
     @Test
     public void testPutAndFlush() throws Exception {
-        final InternalTestCluster cluster = internalCluster();
-        cluster.ensureAtLeastNumDataNodes(3);
         final Map<String, String> props = createProps();
 
         final ElasticsearchSinkTask task = new ElasticsearchSinkTask();
         task.start(props, client);
-        task.open(new HashSet<>(Arrays.asList(TOPIC_PARTITION, TOPIC_PARTITION2, TOPIC_PARTITION3)));
+        task.open(new HashSet<>(Arrays.asList(
+            getTopicPartition(PARTITION),
+            getTopicPartition(PARTITION2),
+            getTopicPartition(PARTITION3)))
+        );
 
         final String key = "key";
         final Schema schema = createSchema();
@@ -66,16 +68,15 @@ public class ElasticsearchSinkTaskTest extends ElasticsearchSinkTestBase {
 
         final Collection<SinkRecord> records = new ArrayList<>();
 
-        SinkRecord sinkRecord = new SinkRecord(TOPIC, PARTITION, Schema.STRING_SCHEMA, key, schema, record, 0);
+        SinkRecord sinkRecord = new SinkRecord(getTopic(), PARTITION, Schema.STRING_SCHEMA, key, schema, record, 0);
         records.add(sinkRecord);
 
-        sinkRecord = new SinkRecord(TOPIC, PARTITION, Schema.STRING_SCHEMA, key, schema, record, 1);
+        sinkRecord = new SinkRecord(getTopic(), PARTITION, Schema.STRING_SCHEMA, key, schema, record, 1);
         records.add(sinkRecord);
 
         task.put(records);
         task.flush(null);
-
-        refresh();
+        task.refresh(getTopic());
 
         verifySearchResults(records, true, false);
     }
@@ -84,8 +85,6 @@ public class ElasticsearchSinkTaskTest extends ElasticsearchSinkTestBase {
     public void testCreateAndWriteToIndexForTopicWithUppercaseCharacters() {
         // We should as well test that writing a record with a previously un seen record will create
         // an index following the required elasticsearch requirements of lowercasing.
-        final InternalTestCluster cluster = internalCluster();
-        cluster.ensureAtLeastNumDataNodes(3);
         final Map<String, String> props = createProps();
 
         final ElasticsearchSinkTask task = new ElasticsearchSinkTask();

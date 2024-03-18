@@ -27,7 +27,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.aiven.connect.elasticsearch.bulk.BulkResponse;
-import io.aiven.connect.elasticsearch.jest.JestElasticsearchClient;
+import io.aiven.connect.elasticsearch.clientwrapper.ElasticsearchClientWrapper;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -45,7 +45,7 @@ public class ElasticsearchSinkFailureTest {
         final ElasticsearchSinkTask elasticsearchSinkTask = new ElasticsearchSinkTask();
         final int numbRetriesBeforeSucceeding = 3;
 
-        final JestElasticsearchClient failingClient = Mockito.mock(JestElasticsearchClient.class);
+        final ElasticsearchClientWrapper failingClient = Mockito.mock(ElasticsearchClientWrapper.class);
         final AtomicInteger apiCallCounter = new AtomicInteger(0);
         when(failingClient.executeBulk(any())).thenAnswer(i -> {
             final int numAttempt = apiCallCounter.incrementAndGet();
@@ -76,7 +76,7 @@ public class ElasticsearchSinkFailureTest {
     @Test
     public void testRaiseExceptionIfNot() throws IOException {
         final ElasticsearchSinkTask elasticsearchSinkTask = new ElasticsearchSinkTask();
-        final JestElasticsearchClient failingClient = Mockito.mock(JestElasticsearchClient.class);
+        final ElasticsearchClientWrapper failingClient = Mockito.mock(ElasticsearchClientWrapper.class);
         final AtomicInteger apiCallCounter = new AtomicInteger(0);
         when(failingClient.executeBulk(any())).thenAnswer(i -> {
             apiCallCounter.incrementAndGet();

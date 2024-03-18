@@ -34,7 +34,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
 import io.aiven.connect.elasticsearch.bulk.BulkProcessor;
-import io.aiven.connect.elasticsearch.jest.JestElasticsearchClient;
+import io.aiven.connect.elasticsearch.clientwrapper.ElasticsearchClientWrapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public class ElasticsearchSinkTask extends SinkTask {
         start(props, null);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("deprecation") //TOPIC_INDEX_MAP_CONFIG
     // public for testing
     public void start(final Map<String, String> props, final ElasticsearchClient client) {
         try {
@@ -121,7 +121,7 @@ public class ElasticsearchSinkTask extends SinkTask {
             if (client != null) {
                 this.client = client;
             } else {
-                this.client = new JestElasticsearchClient(props);
+                this.client = new ElasticsearchClientWrapper(config);
             }
 
             final ElasticsearchWriter.Builder builder = new ElasticsearchWriter.Builder(this.client)
@@ -176,6 +176,10 @@ public class ElasticsearchSinkTask extends SinkTask {
     @Override
     public void close(final Collection<TopicPartition> partitions) {
         log.debug("Closing the task for topic partitions: {}", partitions);
+    }
+
+    public void refresh(final String index) throws IOException {
+        client.refreshIndex(index);
     }
 
     @Override

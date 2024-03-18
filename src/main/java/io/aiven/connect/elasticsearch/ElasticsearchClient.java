@@ -26,12 +26,14 @@ import org.apache.kafka.connect.data.Schema;
 import io.aiven.connect.elasticsearch.bulk.BulkRequest;
 import io.aiven.connect.elasticsearch.bulk.BulkResponse;
 
-import com.google.gson.JsonObject;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public interface ElasticsearchClient extends AutoCloseable {
 
     enum Version {
-        ES_V1, ES_V2, ES_V5, ES_V6, ES_V7
+        ES_V1, ES_V2, ES_V5, ES_V6, ES_V7, ES_V8
     }
 
     /**
@@ -65,7 +67,7 @@ public interface ElasticsearchClient extends AutoCloseable {
      * @param type  the type
      * @throws IOException if the client cannot execute the request
      */
-    JsonObject getMapping(String index, String type) throws IOException;
+    Property getMapping(String index, String type) throws IOException;
 
     /**
      * Creates a bulk request for the list of {@link IndexableRecord} records.
@@ -87,13 +89,18 @@ public interface ElasticsearchClient extends AutoCloseable {
     /**
      * Executes a search.
      *
-     * @param query the search query
      * @param index the index to search
-     * @param type  the type to search
      * @return the search result
      * @throws IOException if the client cannot execute the request
      */
-    JsonObject search(String query, String index, String type) throws IOException;
+    SearchResponse<JsonNode> search(String index) throws IOException;
+
+    /**
+     * Refreshes the index.
+     *
+     * @param index the index to refresh
+     */
+    void refreshIndex(String index) throws IOException;
 
     /**
      * Shuts down the client.

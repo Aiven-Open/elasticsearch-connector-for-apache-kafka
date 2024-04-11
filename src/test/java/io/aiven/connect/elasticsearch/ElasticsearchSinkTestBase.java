@@ -20,7 +20,9 @@ package io.aiven.connect.elasticsearch;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
@@ -28,52 +30,104 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import io.aiven.connect.elasticsearch.jest.JestElasticsearchClient;
+import io.aiven.connect.elasticsearch.clientwrapper.ElasticsearchClientWrapper;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.node.Node;
-import org.elasticsearch.test.ESIntegTestCase;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
-public class ElasticsearchSinkTestBase extends ESIntegTestCase {
+import static org.junit.Assert.assertEquals;
 
+public class ElasticsearchSinkTestBase {
+
+    private static final String DEFAULT_ELASTICSEARCH_TEST_CONTAINER_VERSION = "8.13.0";
+    private static final String ELASTICSEARCH_PASSWORD = "disable_tls_for_testing";
     protected static final String TYPE = "kafka-connect";
 
-    protected static final String TOPIC = "topic";
+    private static final String TOPIC = "topic";
     protected static final int PARTITION = 12;
     protected static final int PARTITION2 = 13;
     protected static final int PARTITION3 = 14;
-    protected static final TopicPartition TOPIC_PARTITION = new TopicPartition(TOPIC, PARTITION);
-    protected static final TopicPartition TOPIC_PARTITION2 = new TopicPartition(TOPIC, PARTITION2);
-    protected static final TopicPartition TOPIC_PARTITION3 = new TopicPartition(TOPIC, PARTITION3);
-
     protected ElasticsearchClient client;
     private DataConverter converter;
 
+    private static ElasticsearchContainer container;
+
+    private final String testTopic;
+
+    public ElasticsearchSinkTestBase() {
+        this.testTopic = String.format("%s-%s", TOPIC, UUID.randomUUID());
+    }
+
+    @BeforeClass
+    public static void staticSetUp() {
+        final String elasticsearchContainerVersion = System.getenv().getOrDefault(
+            "ELASTIC_TEST_CONTAINER_VERSION",
+            DEFAULT_ELASTICSEARCH_TEST_CONTAINER_VERSION
+        );
+        container = new ElasticsearchContainer("elasticsearch:" + elasticsearchContainerVersion)
+            .withPassword(ELASTICSEARCH_PASSWORD);
+        container.getEnvMap().put("xpack.security.transport.ssl.enabled", "false");
+        container.getEnvMap().put("xpack.security.http.ssl.enabled", "false");
+        container.setWaitStrategy(new LogMessageWaitStrategy()
+            .withRegEx(getLogMessageWaitStrategyRegex(elasticsearchContainerVersion)));
+        container.start();
+    }
+
+    private static String getLogMessageWaitStrategyRegex(final String elasticContainerVersion) {
+        final char majorVersion = elasticContainerVersion.charAt(0);
+        switch (majorVersion) {
+            case '7':
+                return ".*\"message\": \"started.*";
+            case '8':
+                return ".*\"message\":\"started.*";
+            default:
+                throw new IllegalArgumentException(
+                    String.format("Supported major versions are 7 and 8, argument resolved to major version %s",
+                        majorVersion));
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
-        super.setUp();
-        client = new JestElasticsearchClient("http://localhost:" + getPort());
+        final Map<String, String> props = new HashMap<>();
+        props.put(ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG, "http://" + container.getHttpHostAddress());
+        props.put(ElasticsearchSinkConnectorConfig.CONNECTION_PASSWORD_CONFIG, ELASTICSEARCH_PASSWORD);
+        props.put(ElasticsearchSinkConnectorConfig.CONNECTION_USERNAME_CONFIG, "elastic");
+        props.put(ElasticsearchSinkConnectorConfig.TYPE_NAME_CONFIG, "kafka-connect");
+        final ElasticsearchSinkConnectorConfig config = new ElasticsearchSinkConnectorConfig(props);
+        client = new ElasticsearchClientWrapper(config);
         converter = new DataConverter(true, DataConverter.BehaviorOnNullValues.IGNORE);
     }
 
     @After
     public void tearDown() throws Exception {
-        super.tearDown();
         if (client != null) {
             client.close();
         }
         client = null;
     }
 
-    protected int getPort() {
-        assertTrue("There should be at least 1 HTTP endpoint exposed in the test cluster",
-            cluster().httpAddresses().length > 0);
-        return cluster().httpAddresses()[0].getPort();
+    @AfterClass
+    public static void staticTearDown() {
+        if (container != null) {
+            container.close();
+        }
+        container = null;
+    }
+
+    public String getTopic() {
+        return this.testTopic;
+    }
+
+    public TopicPartition getTopicPartition(final int partition) {
+        return new TopicPartition(this.testTopic, partition);
     }
 
     protected Struct createRecord(final Schema schema) {
@@ -106,7 +160,7 @@ public class ElasticsearchSinkTestBase extends ESIntegTestCase {
         final Collection<SinkRecord> records,
         final boolean ignoreKey,
         final boolean ignoreSchema) throws IOException {
-        verifySearchResults(records, TOPIC, ignoreKey, ignoreSchema);
+        verifySearchResults(records, getTopic(), ignoreKey, ignoreSchema);
     }
 
     protected void verifySearchResults(
@@ -114,17 +168,15 @@ public class ElasticsearchSinkTestBase extends ESIntegTestCase {
         final String index,
         final boolean ignoreKey,
         final boolean ignoreSchema) throws IOException {
-        final JsonObject result = client.search("", index, null);
-
-        final JsonArray rawHits = result.getAsJsonObject("hits").getAsJsonArray("hits");
+        final SearchResponse<JsonNode> result = client.search(index);
+        final List<Hit<JsonNode>> rawHits = result.hits().hits();
 
         assertEquals(records.size(), rawHits.size());
 
         final Map<String, String> hits = new HashMap<>();
-        for (int i = 0; i < rawHits.size(); ++i) {
-            final JsonObject hitData = rawHits.get(i).getAsJsonObject();
-            final String id = hitData.get("_id").getAsString();
-            final String source = hitData.get("_source").getAsJsonObject().toString();
+        for (final Hit<JsonNode> hit: rawHits) {
+            final String id = hit.id();
+            final String source = hit.source().toString();
             hits.put(id, source);
         }
 
@@ -138,38 +190,4 @@ public class ElasticsearchSinkTestBase extends ESIntegTestCase {
             }
         }
     }
-
-    /* For ES 2.x */
-    @Override
-    protected Settings nodeSettings(final int nodeOrdinal) {
-        return Settings.settingsBuilder()
-            .put(super.nodeSettings(nodeOrdinal))
-            .put(IndexMetaData.SETTING_NUMBER_OF_SHARDS, 1)
-            .put(IndexMetaData.SETTING_NUMBER_OF_REPLICAS, 1)
-            .put(Node.HTTP_ENABLED, true)
-            .build();
-    }
-
-    /* For ES 5.x (requires Java 8) */
-  /*
-  @Override
-  protected Settings nodeSettings(int nodeOrdinal) {
-    int randomPort = randomIntBetween(49152, 65525);
-    return Settings.builder()
-        .put(super.nodeSettings(nodeOrdinal))
-        .put(NetworkModule.HTTP_ENABLED.getKey(), true)
-        .put(HttpTransportSettings.SETTING_HTTP_PORT.getKey(), randomPort)
-        .put("network.host", "127.0.0.1")
-        .build();
-  }
-
-  @Override
-  protected Collection<Class<? extends Plugin>> nodePlugins() {
-    System.setProperty("es.set.netty.runtime.available.processors", "false");
-    Collection<Class<? extends Plugin>> al = new ArrayList<Class<? extends Plugin>>();
-    al.add(Netty4Plugin.class);
-    return al;
-  }
-  */
-
 }

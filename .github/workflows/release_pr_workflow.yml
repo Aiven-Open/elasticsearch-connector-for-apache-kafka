@@ -9,6 +9,9 @@ on:
       snapshot_version:
         description: "Snapshot version '0.2.0-SNAPSHOT' (without 'v')"
         required: true
+  permissions:
+    contents: write
+    pull-requests: write
 
 jobs:
   create_release_pr:

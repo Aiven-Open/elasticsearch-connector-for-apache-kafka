@@ -6,6 +6,9 @@ on:
       commit_hash:
         description: "Hash of 'Release version x.y.z' commit"
         required: true
+  permissions:
+    contents: write
+    pull-requests: write
 
 jobs:
   build:

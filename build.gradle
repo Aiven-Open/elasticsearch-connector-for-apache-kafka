@@ -59,7 +59,7 @@ wrapper {
 ext {
     kafkaVersion = "2.2.0"
     slf4jVersion = "2.0.12"
-    elasticJavaClientVersion = "7.17.18"
+    elasticJavaClientVersion = "8.13.2"
     testContainersElasticVersion = "1.19.6"
     carrotsearchVersion = "2.8.1"
 }

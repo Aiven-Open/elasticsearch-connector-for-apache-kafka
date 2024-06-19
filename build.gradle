@@ -161,10 +161,16 @@ jar {
     }
 }
 
-def elasticsearch7Test = tasks.register("elasticsearch7Test", Test) {
+def elasticsearch7_17Test = tasks.register("elasticsearch7_17Test", Test) {
     environment("ELASTIC_TEST_CONTAINER_VERSION", "7.17.0")
 }
 
+def elasticsearch7Test = tasks.register("elasticsearch7Test", Test) {
+    environment("ELASTIC_TEST_CONTAINER_VERSION", "7.10.1")
+}
+
+
 tasks.named("check") {
     dependsOn elasticsearch7Test
+    dependsOn elasticsearch7_17Test
 }

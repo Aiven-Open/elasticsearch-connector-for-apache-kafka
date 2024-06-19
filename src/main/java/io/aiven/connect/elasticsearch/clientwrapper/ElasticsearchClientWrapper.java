@@ -62,6 +62,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -122,6 +123,18 @@ public class ElasticsearchClientWrapper implements ElasticsearchClient {
         return matchVersionString(esVersion);
     }
 
+    private boolean is7_17AndLater(final ElasticsearchSinkConnectorConfig config) throws IOException {
+        final RestClientBuilder restClientBuilder = restClientBuilder(config, false);
+
+        final RestClient restClient = restClientBuilder.build();
+        final RestClientTransport temporaryTransport =
+            new RestClientTransport(restClient, new JacksonJsonpMapper());
+        final co.elastic.clients.elasticsearch.ElasticsearchClient temporaryClient =
+            new co.elastic.clients.elasticsearch.ElasticsearchClient(temporaryTransport);
+        final String esVersion = temporaryClient.info().version().number();
+        return matchVersionString(esVersion) != Version.ES_V7;
+    }
+
     private Version matchVersionString(final String esVersion) {
         // Default to latest version for forward compatibility
         final Version defaultVersion = Version.ES_V8;
@@ -129,7 +142,12 @@ public class ElasticsearchClientWrapper implements ElasticsearchClient {
             LOG.warn("Couldn't get Elasticsearch version, version is null");
             return defaultVersion;
         } else if (esVersion.startsWith("7.")) {
-            return Version.ES_V7;
+            final String[] split = esVersion.split("\\.");
+            if (Integer.parseInt(split[1]) >= 17) {
+                return Version.ES_V7_17;
+            } else {
+                return Version.ES_V7;
+            }
         } else if (esVersion.startsWith("8.")) {
             return Version.ES_V8;
         } else {
@@ -141,10 +159,13 @@ public class ElasticsearchClientWrapper implements ElasticsearchClient {
         return defaultVersion;
     }
 
-    private ElasticsearchTransport getElasticsearchTransport(final ElasticsearchSinkConnectorConfig config) {
+    private RestClientBuilder restClientBuilder(
+        final ElasticsearchSinkConnectorConfig config,
+        final boolean es717AndLaterMode) {
         final HttpHost[] httpHosts =
             config.getList(ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG).stream().map(HttpHost::create)
                 .toArray(HttpHost[]::new);
+
         final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
         final Optional<String> username = Optional.ofNullable(
             config.getString(ElasticsearchSinkConnectorConfig.CONNECTION_USERNAME_CONFIG)
@@ -164,9 +185,18 @@ public class ElasticsearchClientWrapper implements ElasticsearchClient {
         }
         restClientBuilder.setHttpClientConfigCallback(httpClientConfigCallback -> {
             httpClientConfigCallback.setDefaultCredentialsProvider(credentialsProvider);
-            return httpClientConfigCallback.addInterceptorLast((HttpResponseInterceptor)
+            // Force to use plain application/json content type
+            // 7.17.x and later will use application/vnd.elasticsearch+json; compatible-with=<VERSION>
+            if (!es717AndLaterMode) {
+                httpClientConfigCallback
+                    .addInterceptorLast((HttpRequestInterceptor)
+                        (request, context) ->
+                            request.setHeader("Content-Type", "application/json"));
+            }
+            httpClientConfigCallback.addInterceptorLast((HttpResponseInterceptor)
                 (response, context) ->
                     response.addHeader("X-Elastic-Product", "Elasticsearch"));
+            return httpClientConfigCallback;
         });
 
         final int connTimeout = config.getInt(ElasticsearchSinkConnectorConfig.CONNECTION_TIMEOUT_MS_CONFIG);
@@ -177,6 +207,13 @@ public class ElasticsearchClientWrapper implements ElasticsearchClient {
             return requestConfigCallback;
         });
 
+        return restClientBuilder;
+    }
+
+    private ElasticsearchTransport getElasticsearchTransport(
+        final ElasticsearchSinkConnectorConfig config) throws IOException {
+        final boolean isEs717AndLater = is7_17AndLater(config);
+        final RestClientBuilder restClientBuilder = restClientBuilder(config, isEs717AndLater);
         final RestClient restClient = restClientBuilder.build();
         return new RestClientTransport(
             restClient,

@@ -57,7 +57,7 @@ wrapper {
 }
 
 ext {
-    kafkaVersion = "2.2.0"
+    kafkaVersion = "3.7.1"
     slf4jVersion = "2.0.12"
     elasticJavaClientVersion = "7.17.18"
     testContainersElasticVersion = "1.19.7"

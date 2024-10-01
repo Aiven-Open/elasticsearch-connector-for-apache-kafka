@@ -60,7 +60,7 @@ ext {
     kafkaVersion = "2.2.0"
     slf4jVersion = "2.0.12"
     elasticJavaClientVersion = "7.17.18"
-    testContainersElasticVersion = "1.20.1"
+    testContainersElasticVersion = "1.20.2"
     carrotsearchVersion = "2.8.1"
 }
 

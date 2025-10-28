@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * @param <R> record type
  * @param <B> bulk request type
  */
-public class BulkProcessor<R, B> {
+public final class BulkProcessor<R, B> {
 
     private static final Logger log = LoggerFactory.getLogger(BulkProcessor.class);
 

@@ -75,6 +75,7 @@ public class ElasticsearchSinkTestBase {
             .withPassword(ELASTICSEARCH_PASSWORD);
         container.getEnvMap().put("xpack.security.transport.ssl.enabled", "false");
         container.getEnvMap().put("xpack.security.http.ssl.enabled", "false");
+        container.getEnvMap().put("xpack.security.enabled", "false");
         container.setWaitStrategy(new LogMessageWaitStrategy()
             .withRegEx(getLogMessageWaitStrategyRegex(elasticsearchContainerVersion)));
         container.start();
